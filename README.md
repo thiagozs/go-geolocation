@@ -1,8 +1,8 @@
 # Simple GeoLocation API
 
-Geo location based on ip address.
+Geolocation based on ip address.
 
-Check progress through /health endpoint and if IP's is equal to 200 it is ready
+HealthCheck through `"/healthz"` and `"/readiness"` endpoints, status code are 200 response.
 
 ## Example Request
 
