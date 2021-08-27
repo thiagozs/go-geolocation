@@ -51,6 +51,3 @@ func initConfig() {
 	}
 
 }
-
-func runServer(cmd *cobra.Command, args []string) {
-}
