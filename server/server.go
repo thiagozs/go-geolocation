@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/thiagozs/geolocation-go/services"
@@ -58,9 +59,10 @@ func (s *Server) RegisterRoutes() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	s.router = gin.Default()
+	s.router.Use(cors.Default())
 
 	// endpoint ip
-	s.router.GET("/:ip", s.MaxMindHandler)
+	s.router.GET("/ip", s.MaxMindHandler)
 
 	// health check
 	s.router.GET("/healthz", s.Healthz)

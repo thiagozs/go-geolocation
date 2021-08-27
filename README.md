@@ -1,26 +1,49 @@
-![Raithe](https://github.com/catmullet/Simple-MaxMind-GeoLocation/blob/master/smpgeoloc.png?raw=true)
-# Simple-MaxMind-GeoLocation
-Geo location based on ip address.  Simple one file Geo location Golang API
+# Simple GeoLocation API
 
-## Steps to get going
-1. Download application.go
-2. Zip up application.go
-3. Upload to aws Elastic Beanstalk on Go platform (Minimum of 2gb of memory)
+Geo location based on ip address.
 
-Check progress through /health endpoint and if IP's is equal to 221 it is ready
-
-## Update IP's
-
-`<Your Server DNS>/update`
+Check progress through /health endpoint and if IP's is equal to 200 it is ready
 
 ## Example Request
-`<Your Server DNS>/ip?address=198.60.227.255`
+
+Call GET `https://server/ip?address=4.4.4.4`
   
-## Example Response 
-`{
-  iso_code: "US",
-  country_name: "United States",
-  subdivision: "Idaho",
-  city_name: "Idaho Falls",
-  time_zone: "America/Boise"
-}`
+## Example Response
+
+```json
+{
+   "data":{
+      "Country":{
+         "IsInEuropeanUnion":false,
+         "ISOCode":"US"
+      },
+      "City":{
+         "Names":{
+            "de":"Nashville",
+            "en":"Nashville",
+            "es":"Nashville",
+            "fr":"Nashville",
+            "ja":"ナッシュビル",
+            "pt-BR":"Nashville",
+            "ru":"Нашвилл",
+            "zh-CN":"纳什维尔"
+         }
+      },
+      "Location":{
+         "AccuracyRadius":500,
+         "Latitude":36.0964,
+         "Longitude":-86.8212,
+         "MetroCode":659,
+         "TimeZone":"America/Chicago"
+      },
+      "Postal":{
+         "Code":"37215"
+      },
+      "Traits":{
+         "IsAnonymousProxy":false,
+         "IsSatelliteProvider":false
+      },
+      "IP":"4.4.4.4"
+   }
+}
+```
