@@ -4,6 +4,8 @@ Geolocation based on ip address.
 
 HealthCheck through `"/healthz"` and `"/readiness"` endpoints, status code are 200 response.
 
+Maxmind Downloader `"/updatedb"` is mandatory the [license key](https://www.maxmind.com/en/accounts/current/license-key).
+
 ## Example Request
 
 Call GET `https://server/ip?address=4.4.4.4`
