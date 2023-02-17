@@ -67,6 +67,7 @@ func (s *Server) RegisterRoutes() {
 	// health check
 	s.router.GET("/healthz", s.Healthz)
 	s.router.GET("/readiness", s.Readiness)
+	s.router.GET("/updatedb", s.DownloaderMaxMind)
 }
 
 func (s *Server) Run() error {
