@@ -13,7 +13,7 @@ RUN cd $GOPATH/src/github.com/thiagozs/geolocation-go/; go mod tidy
 RUN cd $GOPATH/src/github.com/thiagozs/geolocation-go/; go build -o $GOPATH/bin/geolocation 
 
 
-FROM alpine:3.18.6
+FROM alpine:3.22.1
 
 RUN apk --no-cache add ca-certificates
 
