@@ -1,32 +1,28 @@
-FROM golang:1.16-alpine as builder
+FROM golang:1.21-alpine AS builder
 
-RUN apk --update upgrade && \
-    apk add build-base gcc sqlite && \
-    rm -rf /var/cache/apk/*
+WORKDIR /workspace
 
-RUN mkdir -p $GOPATH/src/github.com/thiagozs/geolocation-go
+RUN apk add --no-cache git
 
-COPY . $GOPATH/src/github.com/thiagozs/geolocation-go/
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN cd $GOPATH/src/github.com/thiagozs/geolocation-go/; go mod tidy
+COPY . .
 
-RUN cd $GOPATH/src/github.com/thiagozs/geolocation-go/; go build -o $GOPATH/bin/geolocation 
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /workspace/geolocation .
 
+FROM alpine:3.19
 
-FROM alpine:3.18.6
+RUN apk add --no-cache ca-certificates tzdata
 
-RUN apk --no-cache add ca-certificates
+WORKDIR /app
 
-RUN apk --update upgrade && \
-    apk add tzdata && \
-    rm -rf /var/cache/apk/*
+COPY --from=builder /workspace/geolocation ./geolocation
+COPY db/GeoLite2-City.mmdb ./db/GeoLite2-City.mmdb
+
+ENV MAXMIND_DB_PATH=/app/db/GeoLite2-City.mmdb
 
 EXPOSE 5000
 
-RUN mkdir -p /bin/db
-COPY --from=builder /go/src/github.com/thiagozs/geolocation-go/db/GeoLite2-City.mmdb bin/db/GeoLite2-City.mmdb
-COPY --from=builder /go/bin/geolocation /bin/geolocation
-
-WORKDIR /bin
-
-CMD ["geolocation", "runserver", "--http=5000"]
+ENTRYPOINT ["/app/geolocation"]
+CMD ["runserver", "--http=5000"]

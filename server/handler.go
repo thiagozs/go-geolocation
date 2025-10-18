@@ -1,30 +1,39 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"net"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thiagozs/geolocation-go/models"
 	"github.com/thiagozs/geolocation-go/pkg/utils"
+	"github.com/thiagozs/geolocation-go/services"
 )
 
 func (s *Server) MaxMindHandler(c *gin.Context) {
-	req := models.Request{}
-	if c.Bind(&req) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "missing parametes"})
+	var req models.Request
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "missing address parameter"})
 		return
 	}
 
-	if !utils.IsValidIPAddress(req.Address) {
-		c.JSON(http.StatusOK, gin.H{"message": "need ip address"})
+	addr := strings.TrimSpace(req.Address)
+	if addr == "" || !utils.IsValidIPAddress(addr) {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid ip address"})
 		return
 	}
 
-	record, err := s.services.Lookup(net.ParseIP(req.Address))
+	ip := net.ParseIP(addr)
+	record, err := s.geoIP.Lookup(ip)
 	if err != nil {
+		if errors.Is(err, services.ErrMaxMindDatabaseMissing) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"message": "database not loaded"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
@@ -37,41 +46,54 @@ func (s *Server) Healthz(c *gin.Context) {
 }
 
 func (s *Server) Readiness(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"data": "readness"})
+	if !s.geoIP.Ready() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"ready": false, "message": "maxmind database not available"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ready": true})
 }
 
 func (s *Server) DownloaderMaxMind(c *gin.Context) {
-
-	maxmind := os.Getenv("MAXMIND_KEY")
-	filePath, _ := os.Getwd()
-	filePath = filePath + "/db/GeoLite2-City.mmdb"
-
-	if maxmind == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "missing maxmind key"})
+	if s.geoIP == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "geoip service not configured"})
 		return
 	}
 
-	downloader := utils.NewDatabaseDownloader(maxmind, filePath, time.Duration(30*time.Second))
+	force := strings.EqualFold(c.Query("force"), "true")
+	timeout := s.cfg.GeoIP.HTTPTimeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
 
-	ok, err := downloader.ShouldDownload()
+	ctx := c.Request.Context()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	status, err := s.geoIP.Update(ctx, force)
 	if err != nil {
+		if errors.Is(err, services.ErrMaxMindLicenseMissing) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing maxmind license key"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if ok {
-		if utils.FileExists(filePath) {
-			utils.DeleteFile(filePath)
+	message := status.Reason
+	if message == "" {
+		if status.Updated {
+			message = "database downloaded"
+		} else {
+			message = "database already up to date"
 		}
-
-		if err := downloader.Download(); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"update": ok, "file": filePath, "message": "file downloaded"})
-		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"update": ok, "file": filePath, "message": "file already updated"})
+	c.JSON(http.StatusOK, gin.H{
+		"update":  status.Updated,
+		"file":    s.geoIP.DatabasePath(),
+		"message": message,
+	})
 }
