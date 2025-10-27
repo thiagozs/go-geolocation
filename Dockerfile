@@ -11,9 +11,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /workspace/geolocation .
 
-FROM alpine:3.19
-
-RUN apk add --no-cache ca-certificates tzdata
+FROM alpine:3.22.2
 
 WORKDIR /app
 
